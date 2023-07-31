@@ -1,8 +1,7 @@
-# Docker
 # Build a Docker image
 # https://docs.microsoft.com/azure/devops/pipelines/languages/docker
 
-trigger:none
+trigger: none
 
 resources:
 - repo: self
@@ -14,15 +13,32 @@ stages:
 - stage: Build
   displayName: Build image
   jobs:
+  - job: dependencies
+    displayName: Install ckan extension
+    pool:
+      vmImage: ubuntu-latest
+    steps:
+    - task: UsePythonVersion@0
+      inputs:
+        versionSpec: '3.10'
+      displayName: 'Use Python 3.10'
+
+    - script: |
+        python -m pip install --upgrade pip
+        python -m venv .
+        source ./bin/activate
+        pip install -r requirements.txt  # Install project dependencies
+      displayName: 'Install dependencies'
   - job: Build
     displayName: Build
     pool:
       vmImage: ubuntu-latest
     steps:
-    - task: Docker@2
-      displayName: Build an image
+    - task: DockerCompose@0
       inputs:
-        command: build
-        dockerfile: '$(Build.SourcesDirectory)/ckan/Dockerfile'
-        tags: |
-          $(tag)
+        containerregistrytype: 'Azure Container Registry'
+        azureSubscription: 'TDH Sandbox 2(4388628e-e81a-4109-b4ba-ec0ab39ee307)'
+        azureContainerRegistry: '{"loginServer":"wecatdhcontainerregistrysandbox2.azurecr.io", "id" : "/subscriptions/4388628e-e81a-4109-b4ba-ec0ab39ee307/resourceGroups/rowe-weca-resource-group-sandbox2/providers/Microsoft.ContainerRegistry/registries/wecatdhcontainerregistrysandbox2"}'
+        dockerComposeFile: '**/docker-compose.dev.yml'
+        action: 'Run a Docker Compose command'
+        dockerComposeCommand: 'docker compose -f docker-compose.dev.yml build'
